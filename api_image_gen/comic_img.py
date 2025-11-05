@@ -1,17 +1,17 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 import requests
-import urllib.parse
+import urllib.parse  # text code->url
 
 app = FastAPI()
 
-# Pollinations.ai - Completely free, no API key needed!
+# Pollinations.ai
 POLLINATIONS_URL = "https://image.pollinations.ai/prompt/"
 
 
 class ImageRequest(BaseModel):
     prompt: str
-    style: str = "manga"
+    style: str = "manga"  # manga, sketch, anime, ink, webtoon
     output_name: str = "panel.png"
     width: int = 1024
     height: int = 1024
@@ -31,18 +31,14 @@ async def generate_image(req: ImageRequest):
     style_prefix = style_prefixes.get(req.style, "")
     enhanced_prompt = f"{style_prefix}{req.prompt}"
 
-    # URL encode the prompt
     encoded_prompt = urllib.parse.quote(enhanced_prompt)
 
-    # Build URL with parameters
     image_url = f"{POLLINATIONS_URL}{encoded_prompt}?width={req.width}&height={req.height}&nologo=true"
 
     try:
-        # Download the image
         response = requests.get(image_url, timeout=60)
         response.raise_for_status()
 
-        # Save image locally
         with open(req.output_name, "wb") as f:
             f.write(response.content)
 
@@ -64,5 +60,5 @@ async def generate_image(req: ImageRequest):
 async def get_available_styles():
     return {
         "styles": ["manga", "sketch", "anime", "comic", "ink", "webtoon"],
-        "note": "Using Pollinations.ai - No API key required!"
+        "note": "Using Pollinations.ai"
     }
