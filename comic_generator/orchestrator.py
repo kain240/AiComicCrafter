@@ -244,34 +244,53 @@ def create_comic_book_pdf(panels: List[PanelData], output_filename: str) -> str:
         c.drawCentredString(page_width / 2, page_height - 150, f"Generated on {datetime.now().strftime('%Y-%m-%d')}")
         c.showPage()
 
-        # Add each panel as a page
-        for i, panel in enumerate(panels):
-            print(f"  Adding panel {i + 1}/{len(panels)} to PDF...")
+        # Layout configuration for 2x2 grid
+        panels_per_page = 4
+        margin = 30
+        gap = 20  # Gap between panels
 
-            if os.path.exists(panel.image_path):
-                # Load and resize image to fit page
-                img = Image.open(panel.image_path)
-                img_width, img_height = img.size
+        # Calculate panel dimensions
+        panel_width = (page_width - 2 * margin - gap) / 2
+        panel_height = (page_height - 2 * margin - gap) / 2
 
-                # Calculate scaling to fit page with margins
-                margin = 50
-                max_width = page_width - (2 * margin)
-                max_height = page_height - (2 * margin)
+        # Process panels in groups of 4
+        for page_num in range(0, len(panels), panels_per_page):
+            page_panels = panels[page_num:page_num + panels_per_page]
+            print(f"  Adding page {page_num // panels_per_page + 1} with {len(page_panels)} panels...")
 
-                scale = min(max_width / img_width, max_height / img_height)
-                new_width = img_width * scale
-                new_height = img_height * scale
+            # Position for each panel in 2x2 grid
+            positions = [
+                (margin, page_height - margin - panel_height),  # Top-left
+                (margin + panel_width + gap, page_height - margin - panel_height),  # Top-right
+                (margin, page_height - margin - 2 * panel_height - gap),  # Bottom-left
+                (margin + panel_width + gap, page_height - margin - 2 * panel_height - gap)  # Bottom-right
+            ]
 
-                # Center image on page
-                x = (page_width - new_width) / 2
-                y = (page_height - new_height) / 2
+            for i, panel in enumerate(page_panels):
+                if os.path.exists(panel.image_path):
+                    # Load image
+                    img = Image.open(panel.image_path)
+                    img_width, img_height = img.size
 
-                # Draw image
-                c.drawImage(panel.image_path, x, y, width=new_width, height=new_height)
+                    # Calculate scaling to fit panel area
+                    scale = min(panel_width / img_width, panel_height / img_height)
+                    new_width = img_width * scale
+                    new_height = img_height * scale
 
-                # Add panel number
-                c.setFont("Helvetica", 10)
-                c.drawString(margin, margin, f"Panel {i + 1}")
+                    # Get position for this panel
+                    x, y = positions[i]
+
+                    # Center image within its panel area
+                    x_offset = (panel_width - new_width) / 2
+                    y_offset = (panel_height - new_height) / 2
+
+                    # Draw image
+                    c.drawImage(panel.image_path, x + x_offset, y + y_offset,
+                                width=new_width, height=new_height)
+
+                    # Add panel number
+                    c.setFont("Helvetica", 9)
+                    c.drawString(x + 5, y + 5, f"Panel {page_num + i + 1}")
 
             c.showPage()
 
