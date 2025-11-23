@@ -20,8 +20,7 @@ class DialogueBubble(BaseModel):
 
 
 def draw_speech_bubble(draw, x, y, width, height, tail_direction):
-    """Draw a speech bubble with tail"""
-    bbox = [x - width // 2, y - height // 2, x + width // 2, y + height // 2]
+    bbox = [x - width // 2, y - height // 2, x + width // 2, y + height // 2]  # [left, top, right, bottom]
     draw.ellipse(bbox, fill="white", outline="black", width=3)
 
     if "bottom" in tail_direction:
@@ -43,7 +42,6 @@ def draw_speech_bubble(draw, x, y, width, height, tail_direction):
 
 
 def draw_thought_bubble(draw, x, y, width, height):
-    """Draw a thought bubble with small circles"""
     bbox = [x - width // 2, y - height // 2, x + width // 2, y + height // 2]
     draw.ellipse(bbox, fill="white", outline="black", width=3)
 
@@ -54,7 +52,6 @@ def draw_thought_bubble(draw, x, y, width, height):
 
 
 def draw_shout_bubble(draw, x, y, width, height):
-    """Draw a jagged shout bubble"""
     points = []
     num_spikes = 16
     for i in range(num_spikes):
@@ -97,14 +94,11 @@ def wrap_text(text, font, max_width):
 @app.post("/add_bubbles/")
 async def add_dialogue_bubbles(
         image: UploadFile = File(...),
-        bubbles: str = Form(...)  # Changed to Form - this is the fix!
+        bubbles: str = Form(...)
 ):
-    """Add dialogue bubbles to an uploaded image"""
 
-    # Debug: Print what we received
     print(f"Received bubbles parameter: {bubbles}")
 
-    # Parse bubbles
     if not bubbles:
         return {
             "status": "error",
@@ -123,11 +117,9 @@ async def add_dialogue_bubbles(
             "bubbles_added": 0
         }
 
-    # Load image
     image_bytes = await image.read()
-    img = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
+    img = Image.open(io.BytesIO(image_bytes)).convert("RGBA")  # open as PIL img, and add Transparency(A)
 
-    # Check if bubbles list is empty
     if not bubbles_data or len(bubbles_data) == 0:
         return {
             "status": "warning",
@@ -136,11 +128,10 @@ async def add_dialogue_bubbles(
             "bubbles_added": 0
         }
 
-    # Create overlay for bubbles
     overlay = Image.new('RGBA', img.size, (255, 255, 255, 0))
     draw = ImageDraw.Draw(overlay)
 
-    # Try to load a font, fallback to default
+
     try:
         font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 20)
     except:
@@ -190,11 +181,10 @@ async def add_dialogue_bubbles(
             draw.text((text_x, y_offset), line, fill="black", font=custom_font)
             y_offset += line_height
 
-    # Composite the overlay onto the original image
+    # compose the overlay onto the original image
     img = Image.alpha_composite(img, overlay)
     final_img = img.convert("RGB")
 
-    # Save to bytes
     output_buffer = io.BytesIO()
     final_img.save(output_buffer, format="PNG")
     output_buffer.seek(0)
@@ -224,5 +214,4 @@ async def root():
 
 if __name__ == "__main__":
     import uvicorn
-
-    uvicorn.run(app)
+    uvicorn.run(app, host="127.0.0.1", port=8005)

@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Comic Book Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #dc3545;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.online {
+            background: #28a745;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .input-section {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 16px;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        select, input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 16px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .progress {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            display: none;
+        }
+
+        .progress.active {
+            display: block;
+        }
+
+        .progress-step {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            margin-bottom: 10px;
+            background: white;
+            border-radius: 10px;
+            border-left: 4px solid #ddd;
+            transition: all 0.3s;
+        }
+
+        .progress-step.active {
+            border-left-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .progress-step.completed {
+            border-left-color: #10b981;
+            background: #f0fdf4;
+        }
+
+        .progress-step.error {
+            border-left-color: #ef4444;
+            background: #fef2f2;
+        }
+
+        .step-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .progress-step.active .step-icon {
+            background: #667eea;
+            color: white;
+        }
+
+        .progress-step.completed .step-icon {
+            background: #10b981;
+            color: white;
+        }
+
+        .progress-step.completed .step-icon::after {
+            content: '✓';
+        }
+
+        .results {
+            display: none;
+        }
+
+        .results.active {
+            display: block;
+        }
+
+        .panels-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .panel-card {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .panel-card img {
+            width: 100%;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+
+        .panel-info {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 5px;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .final-book {
+            text-align: center;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 40px;
+            border-radius: 15px;
+            margin-top: 30px;
+        }
+
+        .pdf-preview {
+            max-width: 400px;
+            margin: 0 auto 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .pdf-icon {
+            font-size: 64px;
+            margin-bottom: 10px;
+        }
+
+        .download-btn {
+            background: #10b981;
+            display: inline-block;
+            padding: 15px 40px;
+            text-decoration: none;
+            border-radius: 10px;
+            color: white;
+            font-weight: bold;
+            transition: all 0.3s;
+            margin-top: 20px;
+        }
+
+        .download-btn:hover {
+            background: #059669;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3);
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: #fee;
+            color: #c00;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .error-message.active {
+            display: block;
+        }
+
+        .debug-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .debug-info.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 AI Comic Book Generator</h1>
+        <p class="subtitle">Transform your story into a professional comic book with AI</p>
+
+        <div class="status-indicator">
+            <div class="status-dot" id="statusDot"></div>
+            <span id="statusText">Checking API status...</span>
+        </div>
+
+        <div class="input-section">
+            <label for="storyInput">Enter Your Story:</label>
+            <textarea id="storyInput" placeholder="Once upon a time...">A young detective investigates a mysterious case in a neon-lit cyberpunk city. She discovers clues leading to a secret underground organization. With her robot companion, she infiltrates their headquarters and uncovers the truth.</textarea>
+
+            <div class="controls">
+                <div class="control-group">
+                    <label for="styleSelect">Art Style:</label>
+                    <select id="styleSelect">
+                        <option value="manga">Manga</option>
+                        <option value="anime">Anime</option>
+                        <option value="comic">Comic Book</option>
+                        <option value="sketch">Sketch</option>
+                        <option value="ink">Ink Drawing</option>
+                        <option value="webtoon">Webtoon</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="panelsInput">Number of Panels:</label>
+                    <input type="number" id="panelsInput" value="4" min="1" max="12">
+                </div>
+
+                <div class="control-group">
+                    <label for="bubblesInput">Bubbles per Panel:</label>
+                    <input type="number" id="bubblesInput" value="2" min="0" max="5">
+                </div>
+            </div>
+
+            <button class="btn" id="generateBtn" onclick="generateComicBook()">
+                ✨ Generate Comic Book
+            </button>
+
+            <div id="errorMessage" class="error-message"></div>
+            <div id="debugInfo" class="debug-info"></div>
+        </div>
+
+        <div class="progress" id="progressSection">
+            <div class="progress-step" id="step1">
+                <div class="step-icon">1</div>
+                <div>Breaking story into scenes...</div>
+            </div>
+            <div class="progress-step" id="step2">
+                <div class="step-icon">2</div>
+                <div>Generating panel images...</div>
+            </div>
+            <div class="progress-step" id="step3">
+                <div class="step-icon">3</div>
+                <div>Finding bubble positions...</div>
+            </div>
+            <div class="progress-step" id="step4">
+                <div class="step-icon">4</div>
+                <div>Creating dialogue...</div>
+            </div>
+            <div class="progress-step" id="step5">
+                <div class="step-icon">5</div>
+                <div>Adding speech bubbles...</div>
+            </div>
+            <div class="progress-step" id="step6">
+                <div class="step-icon">6</div>
+                <div>Combining into comic book...</div>
+            </div>
+        </div>
+
+        <div class="results" id="resultsSection">
+            <h2>📖 Your Comic Book Panels</h2>
+            <div class="panels-grid" id="panelsGrid"></div>
+
+            <div class="final-book">
+                <h2>📚 Complete Comic Book</h2>
+                <div class="pdf-preview">
+                    <div class="pdf-icon">📄</div>
+                    <p><strong>Your comic book is ready!</strong></p>
+                    <p style="color: #666; font-size: 14px; margin-top: 10px;">
+                        A professional PDF with all your panels
+                    </p>
+                </div>
+                <a href="#" class="download-btn" id="downloadBtn" download>
+                    📥 Download Comic Book PDF
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+
+        let debugMode = true; // Enable detailed logging
+
+        function log(message, data = null) {
+            console.log(message, data || '');
+            if (debugMode) {
+                const debugDiv = document.getElementById('debugInfo');
+                debugDiv.classList.add('active');
+                const timestamp = new Date().toLocaleTimeString();
+                debugDiv.innerHTML += `[${timestamp}] ${message}\n`;
+                if (data) {
+                    debugDiv.innerHTML += JSON.stringify(data, null, 2) + '\n';
+                }
+                debugDiv.scrollTop = debugDiv.scrollHeight;
+            }
+        }
+
+        function updateStep(stepNum, status) {
+            const step = document.getElementById(`step${stepNum}`);
+            if (step) {
+                step.className = `progress-step ${status}`;
+                log(`Step ${stepNum}: ${status}`);
+            }
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.classList.add('active');
+            log('ERROR: ' + message);
+            setTimeout(() => {
+                errorDiv.classList.remove('active');
+            }, 10000);
+        }
+
+        async function checkAPIHealth() {
+            try {
+                log('Checking API health...');
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                log('Health check response:', data);
+
+                const statusDot = document.getElementById('statusDot');
+                const statusText = document.getElementById('statusText');
+
+                if (data.status === 'healthy') {
+                    statusDot.classList.add('online');
+                    statusText.textContent = '✅ All services online';
+                    return true;
+                } else {
+                    statusText.textContent = '⚠️ Some services offline: ' + JSON.stringify(data.services);
+                    return false;
+                }
+            } catch (error) {
+                log('Health check failed:', error);
+                document.getElementById('statusText').textContent = '❌ Cannot connect to API';
+                showError('Cannot connect to API server. Make sure it\'s running on port 8000.');
+                return false;
+            }
+        }
+
+        async function generateComicBook() {
+            const story = document.getElementById('storyInput').value;
+            const style = document.getElementById('styleSelect').value;
+            const numPanels = parseInt(document.getElementById('panelsInput').value);
+            const numBubbles = parseInt(document.getElementById('bubblesInput').value);
+
+            if (!story.trim()) {
+                showError('Please enter a story first!');
+                return;
+            }
+
+            log('Starting comic book generation...');
+            log('Parameters:', { story: story.substring(0, 50) + '...', style, numPanels, numBubbles });
+
+            const generateBtn = document.getElementById('generateBtn');
+            generateBtn.disabled = true;
+            generateBtn.innerHTML = '<div class="spinner"></div>Generating Comic Book...';
+
+            document.getElementById('progressSection').classList.add('active');
+            document.getElementById('resultsSection').classList.remove('active');
+
+            // Reset all steps
+            for (let i = 1; i <= 6; i++) {
+                updateStep(i, '');
+            }
+
+            // Mark step 1 as active
+            updateStep(1, 'active');
+
+            try {
+                log('Sending request to API...');
+                const requestBody = {
+                    story: story,
+                    style: style,
+                    num_panels: numPanels,
+                    num_bubbles: numBubbles,
+                    width: 1024,
+                    height: 1024
+                };
+                log('Request body:', requestBody);
+
+                const response = await fetch(`${API_BASE}/generate_comic_book/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                log('Response status:', response.status);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log('Error response:', errorText);
+                    throw new Error(`API Error (${response.status}): ${errorText}`);
+                }
+
+                const data = await response.json();
+                log('Success response:', data);
+
+                // Mark all steps as completed
+                for (let i = 1; i <= 6; i++) {
+                    updateStep(i, 'completed');
+                }
+
+                // Display results
+                displayResults(data, style, numBubbles);
+
+            } catch (error) {
+                console.error('Generation error:', error);
+                log('Generation failed:', error);
+                showError(`Failed to generate comic book: ${error.message}`);
+
+                // Mark current active step as error
+                for (let i = 1; i <= 6; i++) {
+                    const step = document.getElementById(`step${i}`);
+                    if (step.classList.contains('active')) {
+                        updateStep(i, 'error');
+                        break;
+                    }
+                }
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.innerHTML = '✨ Generate Comic Book';
+            }
+        }
+
+        function displayResults(data, style, numBubbles) {
+            log('Displaying results...');
+            const panelsGrid = document.getElementById('panelsGrid');
+            panelsGrid.innerHTML = '';
+
+            if (!data.panels || data.panels.length === 0) {
+                showError('No panels were generated!');
+                return;
+            }
+
+            // Display each panel
+            data.panels.forEach((panel, index) => {
+                const card = document.createElement('div');
+                card.className = 'panel-card';
+
+                const hasBubbles = panel.has_bubbles ? '<span class="badge">With Dialogue</span>' : '';
+
+                card.innerHTML = `
+                    <img src="${panel.image_url}" alt="Panel ${index + 1}" loading="lazy" onerror="this.src='https://via.placeholder.com/400x400?text=Image+Loading...'" >
+                    <div class="panel-info">
+                        <strong>Panel ${index + 1}:</strong> ${panel.scene}
+                        ${hasBubbles}
+                    </div>
+                `;
+                panelsGrid.appendChild(card);
+            });
+
+            // Set download link
+            const downloadBtn = document.getElementById('downloadBtn');
+            downloadBtn.href = `${API_BASE}${data.download_url}`;
+
+            // Show results
+            document.getElementById('resultsSection').classList.add('active');
+
+            // Scroll to results
+            document.getElementById('resultsSection').scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+
+            log('Results displayed successfully');
+        }
+
+        // Check API health on page load
+        window.addEventListener('load', async () => {
+            log('Page loaded, checking API...');
+            await checkAPIHealth();
+        });
+
+        // Auto-refresh health check every 30 seconds
+        setInterval(checkAPIHealth, 30000);
+    </script>
+</body>
+</html>
