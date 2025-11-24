@@ -242,6 +242,12 @@ def create_comic_book_pdf(panels: List[PanelData], output_filename: str) -> str:
         c.drawCentredString(page_width / 2, page_height - 100, "Comic Book")
         c.setFont("Helvetica", 14)
         c.drawCentredString(page_width / 2, page_height - 150, f"Generated on {datetime.now().strftime('%Y-%m-%d')}")
+
+        # Add border to title page
+        c.setStrokeColorRGB(0, 0, 0)  # Black color
+        c.setLineWidth(2)  # Border thickness
+        c.rect(10, 10, page_width - 20, page_height - 20, fill=0)
+
         c.showPage()
 
         # Layout configuration for 2x2 grid
@@ -290,7 +296,12 @@ def create_comic_book_pdf(panels: List[PanelData], output_filename: str) -> str:
 
                     # Add panel number
                     c.setFont("Helvetica", 9)
-                    c.drawString(x + 5, y + 5, f"Panel {page_num + i + 1}")
+                    # c.drawString(x + 5, y + 5, f"Panel {page_num + i + 1}")
+
+            # Add black border to page
+            c.setStrokeColorRGB(0, 0, 0)  # Black color
+            c.setLineWidth(2)  # Border thickness (adjust as needed)
+            c.rect(10, 10, page_width - 20, page_height - 20, fill=0)
 
             c.showPage()
 
@@ -301,7 +312,6 @@ def create_comic_book_pdf(panels: List[PanelData], output_filename: str) -> str:
     except Exception as e:
         print(f"✗ PDF creation failed: {e}")
         raise HTTPException(status_code=500, detail=f"PDF creation failed: {str(e)}")
-
 
 @app.post("/generate_comic_book/")
 async def generate_comic_book(request: ComicBookRequest):
