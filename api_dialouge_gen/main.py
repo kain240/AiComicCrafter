@@ -26,6 +26,11 @@ class DialogueRequest(BaseModel):
     bubble_positions: List[dict]  # Coordinates from bubble_placement.py (API 3)
 
 
+class SimpleDialogueRequest(BaseModel):
+    scene_description: str
+    num_dialogues: int = 2
+
+
 class DialogueResponse(BaseModel):
     text: str
     x: int
@@ -47,40 +52,50 @@ async def generate_dialogue(req: DialogueRequest):
     model = genai.GenerativeModel("models/gemini-2.5-flash")
 
     prompt = f"""
-You are a professional comic book writer. Given this scene description, create {req.num_dialogues} dialogue lines that would appear in comic panels.
+You are a professional comic book writer. Given this scene description, create {req.num_dialogues} ultra-short dialogue lines for comic bubbles.
 
 Scene: {req.scene_description}
 
-For each dialogue line, you must:
-1. Write natural, concise dialogue (maximum 15 words per bubble - short is better!)
+CRITICAL RULES:
+1. Each dialogue MUST be 1-5 words ONLY (extremely short!)
+2. Use comic book style - punchy, impactful phrases
+3. Examples of good short dialogue:
+   - "Watch out!"
+   - "No way!"
+   - "He's here..."
+   - "Wait!"
+   - "Behind you!"
+
+For each dialogue line:
+1. Write VERY SHORT dialogue (1-5 words maximum!)
 2. Determine the appropriate bubble type:
    - "speech" - Normal talking/conversation
-   - "thought" - Internal thoughts, pondering, remembering
-   - "shout" - Yelling, excitement, surprise, loud sounds
-3. Suggest tail direction based on typical comic layout:
+   - "thought" - Internal thoughts (use italics style)
+   - "shout" - Yelling, excitement, loud sounds
+3. Suggest tail direction:
    - "bottom" - Character speaking from below
    - "top" - Character speaking from above
-   - "bottom-left", "bottom-right" - Angled tails
+   - "bottom-left", "bottom-right", "top-left", "top-right" - Angled tails
 
-CRITICAL: Output ONLY a valid JSON array. No markdown, no explanation, no code blocks.
+Output ONLY a valid JSON array. No markdown, no explanation, no code blocks.
 
 Format:
 [
   {{
-    "text": "Short dialogue here!",
-    "bubble_type": "speech",
+    "text": "Watch out!",
+    "bubble_type": "shout",
     "tail_direction": "bottom",
     "font_size": 20
   }},
   {{
-    "text": "Another line here",
+    "text": "Too late...",
     "bubble_type": "thought",
     "tail_direction": "top",
     "font_size": 18
   }}
 ]
 
-Remember: Keep dialogue SHORT and impactful! Comics use few words.
+Remember: MAXIMUM 5 WORDS per dialogue! Shorter is better!
 """
 
     try:
@@ -121,6 +136,13 @@ Remember: Keep dialogue SHORT and impactful! Comics use few words.
         # Validate it's a list
         if not isinstance(dialogues, list):
             dialogues = [dialogues] if isinstance(dialogues, dict) else []
+
+        # Enforce word limit (1-5 words)
+        for dialogue in dialogues:
+            text = dialogue.get("text", "")
+            words = text.split()
+            if len(words) > 5:
+                dialogue["text"] = " ".join(words[:5])
 
     except Exception as e:
         print(f"Gemini API error: {e}")
@@ -164,24 +186,32 @@ Remember: Keep dialogue SHORT and impactful! Comics use few words.
 
 
 @app.post("/generate_dialogue_simple/")
-async def generate_dialogue_simple(
-        scene_description: str,
-        num_dialogues: int = 2
-):
+async def generate_dialogue_simple(req: SimpleDialogueRequest):
     """
     Simplified endpoint - just provide scene description.
-    Returns dialogue without coordinates (for testing).
+    Returns short scene summary (10-15 words) and ultra-short dialogues (1-5 words).
     """
     model = genai.GenerativeModel("models/gemini-2.5-flash")
 
     prompt = f"""
-Create {num_dialogues} short dialogue lines (max 15 words each) for this scene: {scene_description}
+You are a comic book writer. 
 
-Output only JSON array:
-[
-  {{"text": "dialogue here", "bubble_type": "speech"}},
-  {{"text": "more dialogue", "bubble_type": "thought"}}
-]
+Given this scene: {req.scene_description}
+
+Provide:
+1. A concise scene description (10-15 words)
+2. {req.num_dialogues} ultra-short dialogue lines (1-5 words each)
+
+Output ONLY valid JSON:
+{{
+  "scene_summary": "Brief 10-15 word description here",
+  "dialogues": [
+    {{"text": "1-5 words", "bubble_type": "speech"}},
+    {{"text": "short text", "bubble_type": "thought"}}
+  ]
+}}
+
+Bubble types: "speech", "thought", "shout"
 """
 
     try:
@@ -192,17 +222,29 @@ Output only JSON array:
         response_text = re.sub(r'```json\s*', '', response_text)
         response_text = re.sub(r'```\s*', '', response_text)
 
-        dialogues = json.loads(response_text)
+        result = json.loads(response_text)
+
+        # Enforce word limits
+        scene_words = result.get("scene_summary", "").split()
+        if len(scene_words) > 15:
+            result["scene_summary"] = " ".join(scene_words[:15])
+
+        for dialogue in result.get("dialogues", []):
+            text_words = dialogue.get("text", "").split()
+            if len(text_words) > 5:
+                dialogue["text"] = " ".join(text_words[:5])
 
         return {
             "status": "success",
-            "dialogues": dialogues,
-            "scene": scene_description
+            "scene_summary": result.get("scene_summary", ""),
+            "dialogues": result.get("dialogues", []),
+            "original_scene": req.scene_description
         }
     except Exception as e:
         return {
             "status": "error",
             "message": str(e),
+            "scene_summary": "",
             "dialogues": []
         }
 
@@ -211,14 +253,16 @@ Output only JSON array:
 async def root():
     return {
         "message": "Dialogue Generation API",
-        "version": "1.0",
-        "description": "Generates contextual dialogue for comic panels with bubble type detection",
+        "version": "2.0",
+        "description": "Generates concise scene descriptions (10-15 words) and ultra-short dialogues (1-5 words)",
         "endpoints": {
             "/generate_dialogue/": "POST - Generate dialogue with coordinates",
-            "/generate_dialogue_simple/": "POST - Generate dialogue without coordinates",
+            "/generate_dialogue_simple/": "POST - Generate scene summary + dialogues",
             "/test": "GET - Test API with sample data",
             "/docs": "API documentation"
         },
+        "dialogue_length": "1-5 words per bubble",
+        "scene_summary_length": "10-15 words",
         "bubble_types": ["speech", "thought", "shout"],
         "tail_directions": ["bottom", "top", "bottom-left", "bottom-right", "top-left", "top-right"]
     }
@@ -231,10 +275,11 @@ async def test_endpoint():
     """
     sample_request = DialogueRequest(
         scene_description="A brave knight facing a dragon in a mountain cave",
-        num_dialogues=2,
+        num_dialogues=3,
         bubble_positions=[
             {"x": 200, "y": 150, "width": 200},
-            {"x": 600, "y": 400, "width": 200}
+            {"x": 600, "y": 400, "width": 200},
+            {"x": 400, "y": 300, "width": 200}
         ]
     )
 
@@ -254,13 +299,17 @@ if __name__ == "__main__":
     import uvicorn
 
     print("=" * 60)
-    print("  DIALOGUE GENERATION API")
+    print("  DIALOGUE GENERATION API v2.0")
     print("=" * 60)
-    print("  Port: 8004")
+    print("  Port: 8014")
+    print("  Features:")
+    print("    - Scene summaries: 10-15 words")
+    print("    - Dialogues: 1-5 words each")
     print("  Endpoints:")
     print("    - POST /generate_dialogue/")
+    print("    - POST /generate_dialogue_simple/")
     print("    - GET /test")
     print("    - GET /docs")
     print("=" * 60)
 
-    uvicorn.run(app, host="0.0.0.0", port=8004)
+    uvicorn.run(app, host="127.0.0.1", port=8014)
