@@ -18,6 +18,28 @@ Given a story prompt, the platform automatically:
 
 ---
 
+## Example Generated Comic
+
+The following comic was generated automatically from a single story prompt using the complete AI Comic Crafter pipeline.
+
+### Story Prompt
+
+> A young hero named Blaze discovers a mysterious power hidden within him. As a dark cosmic entity approaches Earth, Blaze must embrace his destiny and protect the city from destruction.
+
+### Generated Workflow
+
+Story Prompt → Story Segmentation → Dialogue Generation → AI Illustration Creation → Speech Bubble Placement → Comic Assembly → PDF Export
+
+### Sample Output
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/eb17cc74-06cb-4a6e-829a-4eec474510e5" width="45%" />
+  <img src="https://github.com/user-attachments/assets/2bc06643-f35f-467c-a1ad-be714c145f3b" width="45%" />
+</p>
+
+This comic book was created automatically with minimal human intervention, demonstrating the platform's ability to transform natural language stories into fully illustrated comic narratives.
+
+
 ## Features
 
 ### 📚 Story Understanding
